@@ -1,0 +1,82 @@
+# Module or library install command (run this in terminal before running the script)
+#pip install langchain langchain-core langchain-community langchain-cohere cohere
+import os
+from langchain_community.document_loaders import TextLoader
+from langchain_core.prompts import PromptTemplate
+from langchain_cohere import ChatCohere
+
+
+# =========================
+# CONFIG
+# =========================
+
+COHERE_API_KEY = "Enter your cohere API key here"
+FILE_PATH = "./teaching.txt"   # keep file in same folder
+
+os.environ["COHERE_API_KEY"] = COHERE_API_KEY
+
+# =========================
+# LOAD FILE
+# =========================
+
+loader = TextLoader(FILE_PATH)
+docs = loader.load()
+
+document_text = docs[0].page_content
+
+print("✅ File Loaded Successfully\n")
+print("Preview:\n", document_text[:200], "\n")
+
+
+# =========================
+# PROMPT
+# =========================
+
+prompt = PromptTemplate(
+    input_variables=["document", "question"],
+    template="""
+You are a helpful assistant. Read the document and answer.
+
+Document: {document}
+Question: {question}
+
+Answer in this format:
+Summary   : (1-2 sentences)
+Answer    : (direct answer)
+Key Points: (3 bullet points)
+"""
+)
+
+
+# =========================
+# MODEL
+# =========================
+
+llm = ChatCohere(
+    model="command-a-03-2025",
+    temperature=0.3
+)
+
+chain = prompt | llm
+
+
+# =========================
+# INTERACTIVE CHAT
+# =========================
+
+print("✅ Chat ready! Type 'exit' to quit.\n")
+
+while True:
+    question = input("You: ")
+
+    if question.lower() == "exit":
+        break
+
+    result = chain.invoke({
+        "document": document_text,
+        "question": question
+    })
+
+    print("\nBot:")
+    print(result.content)
+    print()
