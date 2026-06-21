@@ -1,28 +1,60 @@
-# Module or library install command (run this in terminal before running the script)
-# pip install "pydantic>=2.0" wikipedia-api requests beautifulsoup4 lxml
+import wikipedia
+import requests                         
+from bs4 import BeautifulSoup          
 
-from pydantic import BaseModel
-from typing import List, Optional
-import wikipediaapi
-import requests
-from bs4 import BeautifulSoup
-import re
+def fetch_info(name):
+    try:
+        results = wikipedia.search(name)
+        if not results:
+            return "No matching page found"
+        
+        name = results[0]
+        summary = wikipedia.summary(name, sentences=2)     
+        url = wikipedia.page(name).url
+        headers = {"User-Agent": "Mozilla/5.0"}            
+        html = requests.get(url, headers=headers).text     
 
+        soup = BeautifulSoup(html, "html.parser")         
 
-class InstitutionProfile(BaseModel):
-    founder: Optional[str] = "Unknown"
-    Established: Optional[int] = 0
-    branches: List[str] = ["Unknown"]
-    employee_count: Optional[int] = 0
-    summary: str
+        infobox = soup.find("table", {"class": "infobox"})
+        rows = infobox.find_all("tr") if infobox else []
 
+        founded = "Not Found"
+        headquarters = "Not Found"
 
-def fetch_wikipedia_data(institution_name: str) -> dict:
-    user_agent = "MyInstitutionInfoBot/1.0 (contact: your-email@example.com)"
-    wiki_wiki = wikipediaapi.Wikipedia(user_agent=user_agent, language="en")
+        for row in rows:
+            th = row.find("th")
+            td = row.find("td")
+            if not th or not td:
+                continue
+            
+            key = th.get_text(strip=True).lower()
+            value = td.get_text(" ", strip=True)
 
-    page = wiki_wiki.page(institution_name)
-    if not page.exists():
+            if "founded" in key:
+                founded = value
+            
+            if "headquarters" in key:
+                headquarters = value
+
+        content = wikipedia.page(name).content.lower()     
+        cities = ["New York", "London", "Tokyo", "Bangalore", "Davangere"]
+        branches = [c for c in cities if c.lower() in content]
+
+        if not branches:
+            branches = ["Not Found"]
+
+        return f"""
+Name: {name}
+Founded: {founded}
+Headquarters: {headquarters}
+Branches: {', '.join(branches)}
+Summary: {summary}
+"""
+    except Exception as e:
+        return f"Error: {e}"
+
+print(fetch_info(input("Enter institution name: ")))    if not page.exists():
         raise ValueError(f"Wikipedia page for '{institution_name}' not found.")
 
     summary = page.summary[:300]
