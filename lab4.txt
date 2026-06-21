@@ -1,0 +1,105 @@
+# Module or library install command (run this in terminal before running the script)
+
+# pip install sentence-transformers langchain-cohere cohere
+
+import os
+import re
+from sentence_transformers import SentenceTransformer, util
+from langchain_cohere import ChatCohere
+
+
+# =========================
+# CONFIG
+# =========================
+
+COHERE_API_KEY = ""
+os.environ["COHERE_API_KEY"] = COHERE_API_KEY
+
+
+# =========================
+# MODELS
+# =========================
+
+embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+llm = ChatCohere(
+    model="command-a-03-2025",
+    temperature=0.3
+)
+
+
+# =========================
+# DYNAMIC KEYWORD EXTRACTION
+# =========================
+
+def extract_keywords(prompt_text):
+    words = re.findall(r"\b[a-zA-Z]{4,}\b", prompt_text.lower())
+    return list(dict.fromkeys(words))
+
+
+# =========================
+# DYNAMIC EMBEDDING ENRICHMENT
+# =========================
+
+def enrich_prompt(original_prompt):
+    keywords = extract_keywords(original_prompt)
+
+    if not keywords:
+        return original_prompt, []
+
+    # Create embeddings for all keywords
+    keyword_embeddings = embedding_model.encode(keywords, convert_to_tensor=True)
+
+    # Find most relevant keywords among themselves
+    scores = util.cos_sim(keyword_embeddings, keyword_embeddings)
+
+    enriched_words = set()
+
+    for i, keyword in enumerate(keywords):
+        top_indices = scores[i].topk(k=min(3, len(keywords))).indices
+
+        for idx in top_indices:
+            enriched_words.add(keywords[int(idx)])
+
+    enriched_words = list(enriched_words)
+
+    enriched_prompt = f"""
+Original Prompt:
+{original_prompt}
+
+Related concepts (auto-generated using embeddings):
+{", ".join(enriched_words)}
+
+Now provide a detailed and context-rich answer.
+"""
+
+    return enriched_prompt, enriched_words
+
+
+# =========================
+# MAIN PROGRAM
+# =========================
+
+original_prompt = input("Enter your prompt: ")
+
+enriched_prompt, enriched_words = enrich_prompt(original_prompt)
+
+original_response = llm.invoke(original_prompt)
+enriched_response = llm.invoke(enriched_prompt)
+
+
+# =========================
+# OUTPUT
+# =========================
+
+print("\n=========== RELATED WORDS (AUTO) ===========\n")
+print(enriched_words)
+
+print("\n=========== ORIGINAL RESPONSE ===========\n")
+print(original_response.content)
+
+print("\n=========== ENRICHED RESPONSE ===========\n")
+print(enriched_response.content)
+
+print("\n=========== RESULT ===========\n")
+print("Enriched response is usually more detailed and context-aware.")
