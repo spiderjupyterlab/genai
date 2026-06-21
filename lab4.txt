@@ -1,36 +1,40 @@
-# Module or library install command (run this in terminal before running the script)
+import transformers                   
+print(transformers.__version__)
 
-# pip install sentence-transformers langchain-cohere cohere
+pip install transformers gensim torch -q 
+#torch → deep learning backend, -q → quiet mode (less output)
 
-import os
-import re
-from sentence_transformers import SentenceTransformer, util
-from langchain_cohere import ChatCohere
+from transformers import pipeline     
+import gensim.downloader as api        
 
+print("Loading word embeddings...")
+embedding_model = api.load("glove-wiki-gigaword-100")
+generator = pipeline("text-generation", model="gpt2")    
+prompt = input("Enter a prompt: ")
 
-# =========================
-# CONFIG
-# =========================
+try:
+    word = prompt.split()[-1]
+    similar = embedding_model.most_similar(word, topn=5)
+    similar_words = [w[0] for w in similar]
+except:
+    similar_words = []
 
-COHERE_API_KEY = ""
-os.environ["COHERE_API_KEY"] = COHERE_API_KEY
+print("\nSimilar Words:", similar_words)
 
+enriched_prompt = prompt + " including " + ", ".join(similar_words)
 
-# =========================
-# MODELS
-# =========================
+print("\nOriginal Prompt:", prompt)
+print("Enriched Prompt:", enriched_prompt)
 
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+original = generator(prompt, max_length=60, num_return_sequences=1)
+enriched = generator(enriched_prompt, max_length=60, num_return_sequences=1)
+#num_return_sequences: Number of generated outputs.
 
-llm = ChatCohere(
-    model="command-a-03-2025",
-    temperature=0.3
-)
+print("\n--- Output for Original Prompt ---")
+print(original[0]['generated_text'])
 
-
-# =========================
-# DYNAMIC KEYWORD EXTRACTION
-# =========================
+print("\n--- Output for Enriched Prompt ---")
+print(enriched[0]['generated_text'])# =========================
 
 def extract_keywords(prompt_text):
     words = re.findall(r"\b[a-zA-Z]{4,}\b", prompt_text.lower())
