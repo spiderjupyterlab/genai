@@ -1,23 +1,25 @@
-# Required Libraries:
-# Install gensim if not already installed:
-# pip install gensim
+from gensim.downloader import load
+import random
 
-import gensim.downloader as api  # For loading pre-trained word embeddings
-from gensim.models import KeyedVectors  # For working with word vectors
-import random  # For shuffling similar words
+print("Loading pre-trained GloVe model (50 dimensions)... ")
+model = load("glove-wiki-gigaword-50")
+print("Model loaded successfully!")
 
-# Load pre-trained GloVe word vectors (100-dimensional, trained on Wikipedia + Gigaword)
-model = api.load("glove-wiki-gigaword-100")
+def create_paragraph(iw, sws):           
+    paragraph = f"The topic of {iw} is fascinating, often linked to terms like "
+    random.shuffle(sws) 
+    for word in sws:
+        paragraph += str(word) + ", "
+    paragraph = paragraph.rstrip(", ") + "."
+    return paragraph
 
-# Function to generate similar words for a given seed word
-def generate_similar_words(seed_word, topn=10):
-    # Check if the seed word exists in the model vocabulary
-    if seed_word in model:
-        # Return top 'n' similar words based on cosine similarity
-        return [word for word, _ in model.most_similar(seed_word, topn=topn)]
-    else:
-        # Return empty list if word not in vocabulary
-        return []
+iw = "hacking"
+sws = model.most_similar(iw, topn=5)
+
+words = [word for word, s in sws]
+
+paragraph = create_paragraph(iw, words)
+print(paragraph)        return []
 
 # Function to create a meaningful paragraph using the seed and its similar words
 def create_paragraph(seed_word):
