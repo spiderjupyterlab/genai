@@ -1,47 +1,27 @@
-# Module or library install command (run this in terminal before running the script)
-# pip install langchain langchain-core langchain-community langchain-cohere langchain-text-splitters cohere pypdf faiss-cpu tiktoken sentence-transformers
-
-import os
-import warnings
-
-warnings.filterwarnings("ignore")
+!pip install langchain faiss-cpu sentence-transformers pypdf
+!pip install langchain langchain-community faiss-cpu sentence-transformers pypdf
+!pip install langchain langchain-community langchain-text-splitters faiss-cpu sentence-transformers pypdf
 
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_community.vectorstores import FAISS                
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_core.prompts import PromptTemplate
-from langchain_cohere import ChatCohere
 
+loader = PyPDFLoader("ipc.pdf")
+docs = loader.load()
 
-# =========================
-# CONFIG
-# =========================
+splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+texts = splitter.split_documents(docs)
 
-COHERE_API_KEY = "Enter your Cohere API key here"
-PDF_PATH = "./IPC.pdf"
+embeddings = HuggingFaceEmbeddings()
+db = FAISS.from_documents(texts, embeddings)
 
-os.environ["COHERE_API_KEY"] = COHERE_API_KEY
+while True:
+    query = input("Ask IPC question: ")
+    results = db.similarity_search(query, k=2)
 
-
-# =========================
-# LOAD PDF
-# =========================
-
-print(f"✅ PDF ready → {PDF_PATH}")
-
-loader = PyPDFLoader(PDF_PATH)
-pages = loader.load()
-
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,
-    chunk_overlap=200
-)
-
-chunks = splitter.split_documents(pages)
-
-print(f"✅ {len(pages)} pages → {len(chunks)} chunks")
-
+    for r in results:
+        print("\nAnswer:", r.page_content)
 
 # =========================
 # EMBEDDINGS + VECTOR STORE
